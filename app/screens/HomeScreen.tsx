@@ -8,17 +8,35 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { Habit } from '../types/habit';
+import { db } from '../../src/config/firebase';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 
-export const HomeScreen = () => {
+export const HomeScreen = ({ navigation }: any) => {
   const [habits, setHabits] = useState<Habit[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: Fetch habits from Firebase
-    // This will be implemented when we set up Firebase
+    const q = query(collection(db, 'habits'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const habitsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Habit[];
+      setHabits(habitsData);
+      setLoading(false);
+    }, (error) => {
+      console.error('Error fetching habits:', error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const renderHabitItem = ({ item }: { item: Habit }) => (
-    <TouchableOpacity style={styles.habitItem}>
+    <TouchableOpacity 
+      style={styles.habitItem}
+      onPress={() => navigation.navigate('HabitDetail', { habitId: item.id })}
+    >
       <View style={styles.habitContent}>
         <Text style={styles.habitName}>{item.name}</Text>
         <Text style={styles.streakText}>Streak: {item.streak} days</Text>
@@ -33,7 +51,10 @@ export const HomeScreen = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>My Habits</Text>
-        <TouchableOpacity style={styles.addButton}>
+        <TouchableOpacity 
+          style={styles.addButton}
+          onPress={() => navigation.navigate('AddHabit')}
+        >
           <Text style={styles.addButtonText}>+ Add Habit</Text>
         </TouchableOpacity>
       </View>
