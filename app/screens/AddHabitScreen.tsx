@@ -7,34 +7,37 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { Habit } from '../types/habit';
-import { db } from '../../src/config/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { useHabits } from '../../src/hooks/useHabits';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 type Frequency = 'daily' | 'weekly' | 'monthly';
 
 export const AddHabitScreen = ({ navigation }: any) => {
   const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
   const [frequency, setFrequency] = useState<Frequency>('daily');
+  const [loading, setLoading] = useState(false);
+  const { addHabit } = useHabits();
 
   const handleSubmit = async () => {
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      Alert.alert('Error', 'Please enter a habit name');
+      return;
+    }
 
     try {
-      await addDoc(collection(db, 'habits'), {
-        name: name.trim(),
-        description: description.trim(),
-        frequency,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        streak: 0,
-        completedDates: [],
-      });
+      setLoading(true);
+      await addHabit(name.trim(), frequency);
       navigation.goBack();
-    } catch (error) {
-      console.error('Error adding habit:', error);
+    } catch (error: any) {
+      Alert.alert(
+        'Error',
+        error.message || 'Failed to create habit. Please try again.'
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -48,16 +51,7 @@ export const AddHabitScreen = ({ navigation }: any) => {
             value={name}
             onChangeText={setName}
             placeholder="Enter habit name"
-          />
-
-          <Text style={styles.label}>Description (Optional)</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={description}
-            onChangeText={setDescription}
-            placeholder="Enter description"
-            multiline
-            numberOfLines={4}
+            autoFocus
           />
 
           <Text style={styles.label}>Frequency</Text>
@@ -84,11 +78,18 @@ export const AddHabitScreen = ({ navigation }: any) => {
           </View>
 
           <TouchableOpacity
-            style={[styles.submitButton, !name.trim() && styles.submitButtonDisabled]}
+            style={[
+              styles.submitButton,
+              (!name.trim() || loading) && styles.submitButtonDisabled,
+            ]}
             onPress={handleSubmit}
-            disabled={!name.trim()}
+            disabled={!name.trim() || loading}
           >
-            <Text style={styles.submitButtonText}>Create Habit</Text>
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.submitButtonText}>Create Habit</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -99,70 +100,67 @@ export const AddHabitScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F2F2F7',
   },
   scrollView: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   form: {
     padding: 16,
-    backgroundColor: '#FFFFFF',
   },
   label: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#000000',
     marginBottom: 8,
   },
   input: {
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#E5E5E5',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     marginBottom: 16,
   },
-  textArea: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
   frequencyContainer: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 24,
   },
   frequencyButton: {
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    marginHorizontal: 4,
     backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    borderRadius: 8,
+    padding: 12,
+    marginHorizontal: 4,
+    alignItems: 'center',
   },
   frequencyButtonActive: {
     backgroundColor: '#007AFF',
     borderColor: '#007AFF',
   },
   frequencyButtonText: {
-    textAlign: 'center',
-    color: '#666',
+    fontSize: 16,
+    color: '#000000',
   },
   frequencyButtonTextActive: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontWeight: '600',
   },
   submitButton: {
     backgroundColor: '#007AFF',
-    padding: 16,
     borderRadius: 8,
+    padding: 16,
     alignItems: 'center',
   },
   submitButtonDisabled: {
-    backgroundColor: '#ccc',
+    opacity: 0.5,
   },
   submitButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
